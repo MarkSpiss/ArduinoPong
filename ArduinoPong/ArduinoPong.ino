@@ -30,15 +30,15 @@ int buttonB = 0;
 int centerX = 20;
 int centerY = 20;
 int radius = 3;
-int velocityX = 3;
-int velocityY = 3;
+int velocityX = 1;
+int velocityY = 1;
 
 // boundaries ball
 int leftBound = radius;
 int rightBound = maxPixelX - radius;
-int upperBound =  radius;
+int upperBound = radius;
 int lowerBound = maxPixelY - radius;
-bool inBounds = ((centerX > leftBound) && (centerX < rightBound) && (centerY > upperBound) && (centerY < (lowerBound - 1)));
+bool inBounds = (centerX > leftBound) && (centerX < rightBound) && (centerY > upperBound) && (centerY < (lowerBound - 1));
 
 
 
@@ -79,57 +79,60 @@ void loop() {
   } else if (buttonB != 1 && x < 63 - length) {
     x = x + 1;
   }
-  display.drawCircle(centerX, centerY, radius, WHITE);  // (Xcenter, Ycenter, radius)
-  display.fillCircle(centerX, centerY, radius, WHITE);
 
-inBounds = ((centerX > leftBound) && (centerX < rightBound) && (centerY > upperBound) && (centerY < (lowerBound - 1)));
-  Serial.print(inBounds);
 
-  if (inBounds != 1) {
+  inBounds = (centerX > leftBound) && (centerX < rightBound) && (centerY > upperBound) && (centerY < (lowerBound - 1));
+  // Serial.println("bounds: " + inBounds);
+  // Serial.println("left: " + (centerX > leftBound));
+  // Serial.println("right: " + (centerX < rightBound));
+  // Serial.println("up: " + (centerY > upperBound));
+  // Serial.println("low: " + (centerY > (lowerBound - 1)));
+
+  if (inBounds) {
     centerX = centerX + 1;
     centerY = centerY + 1;
   }
 
-
-  /*
-// '1' should become a velocity variable
-
-initially
-centerX = centerX + 1
-centerY = centerY + 1
+  display.drawCircle(centerX, centerY, radius, WHITE);  // (Xcenter, Ycenter, radius)
+  display.fillCircle(centerX, centerY, radius, WHITE);
 
 
-if (hit wallRight || hit wallLeft){
-  velocityX = - velocityX
+
+
+
+  if (hitRight() || hitLeft()) {
+    velocityX = velocityX * -1;
   }
 
-else if (hit top || hit bottom){
-  velocityY = - velocityY
+  else if (hitTop() || hitLower()) {
+    velocityY = velocityY * -1;
   }
 
-  centerX update
-  centerY update
+  // centerX update
+  // centerY update
 
+  centerX = centerX + velocityX;
+  centerY = centerY + velocityY;
 
-*/
 
 
   display.display();  // required to refresh the screen contents
   delay(50);
 }
 
-
-/*
-// HELLO WORLD CODE
-
-void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);  // initialize pin as output
+bool hitRight() {
+  return centerX == maxPixelX - radius;
 }
 
-void loop() {
-  digitalWrite(LED_BUILTIN, HIGH);  // switch LED on (HIGH voltage)
-  delay(1000);                      // wait 1000 ms, i.e. one second
-  digitalWrite(LED_BUILTIN, LOW);   // switch LED off (LOW voltage)
-  delay(1000);                      // wait a second
+bool hitLeft() {
+  return centerX == radius;
 }
-*/
+
+bool hitTop() {
+  return centerY == radius;
+}
+
+// should distinguish between paddle and lower
+bool hitLower() {
+  return centerY == maxPixelY - radius;
+}
