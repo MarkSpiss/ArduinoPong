@@ -6,7 +6,6 @@ The libraries can be added via the library manager: make sure you have verion:
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-// #include <SSD1306.h>
 
 #define KEYA D3
 #define KEYB D4
@@ -14,32 +13,36 @@ The libraries can be added via the library manager: make sure you have verion:
 
 Adafruit_SSD1306 display(OLED_RESET);
 
-// screen limitis
+// Screen border values
 int maxPixelX = 63;
 int maxPixelY = 47;
 
 
-// coordinates line(paddle)
-int x = 23;
-int y = 47;
-int length = 16;
-int buttonA = 0;
-int buttonB = 0;
+// Line (paddle) properties 
+int paddleX = 23;
+int paddleY = 47;
+int paddleLength = 16;
 
-//coordinates ball
-int centerX = 20;
-int centerY = 20;
-int radius = 3;
-int velocityX = 1;
-int velocityY = 1;
+int buttonA;// = 0;
+int buttonB;// = 0;
+
+// Ball properties
+int ballCenterX;
+int ballCenterY;
+int ballRadius = 3;
+int ballVelocityX = 1;
+int ballVelocityY = 1;
 
 // boundaries ball
-int leftBound = radius;
-int rightBound = maxPixelX - radius;
-int upperBound = radius;
-int lowerBound = maxPixelY - radius;
-bool inBounds = (centerX > leftBound) && (centerX < rightBound) && (centerY > upperBound) && (centerY < (lowerBound - 1));
+int leftBound = ballRadius;
+int rightBound = maxPixelX - ballRadius;
+int upperBound = ballRadius;
+int lowerBound = maxPixelY - ballRadius;
+bool inBounds = (ballCenterX > leftBound) && (ballCenterX < rightBound) && (ballCenterY > upperBound) && (ballCenterY < (lowerBound - 1));
 
+// game properties
+bool gameOver = false;
+int score = 0;
 
 
 void setup() {
@@ -50,89 +53,124 @@ void setup() {
   pinMode(KEYA, INPUT);
   pinMode(KEYB, INPUT);
 
-
-  display.drawCircle(centerX, centerY, radius, WHITE);  // (Xcenter, Ycenter, radius)
-  display.fillCircle(centerX, centerY, radius, WHITE);
+  setRandomBallCoordinates();
 }
 
 
 
 void loop() {
+  while(!gameOver){
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+    display.print(score);
+
+    // drawing a paddle
+    display.drawFastHLine(paddleX, paddleY, paddleLength, WHITE); 
+
+    // drawing a circle
+    display.drawCircle(ballCenterX, ballCenterY, ballRadius, WHITE);
+    display.fillCircle(ballCenterX, ballCenterY, ballRadius, WHITE);
+
+    // reading input from buttons
+    buttonA = digitalRead(KEYA);
+    buttonB = digitalRead(KEYB);
+
+    // the logic of moving the paddle
+    if (buttonA != 1 && paddleX > 0) {
+      paddleX = paddleX - 1;
+    } else if (buttonB != 1 && paddleX < 63 - paddleLength) {
+      paddleX = paddleX + 1;
+    }
+
+    if (hitRight() || hitLeft()) {
+      ballVelocityX = ballVelocityX * -1;
+    }
+
+    if (hitTop()) {
+      ballVelocityY = ballVelocityY * -1;
+    }
+
+    if(hitPaddle()){
+      score++;
+      ballVelocityY = ballVelocityY * -1;
+
+      if(hitPaddleLeftSide()){
+        ballVelocityX = abs(ballVelocityX) * (-1);
+      } else {
+        ballVelocityX = abs(ballVelocityX);
+      }
+    }
+
+    if (hitBottom()){
+      gameOver = true;
+    }
+
+    ballCenterX = ballCenterX + ballVelocityX;
+    ballCenterY = ballCenterY + ballVelocityY;
+
+    display.display();  // required to refresh the screen contents
+    delay(10);
+  }
+
   display.clearDisplay();
   display.setCursor(0, 0);
   display.setTextColor(WHITE);
-  // display.setTextSize(2);
-  // display.println("NDL");
-  // display.setTextSize(1);
+  display.setTextSize(1);
+  display.println("Game Over");
+  display.print("Your score: ");
+  display.println(score);
+  display.println("Press A to play");
+  display.display();
 
-  // display.print("Key A = ");
-  // display.println(digitalRead(KEYA));
-  // display.print("Key B = ");
-  // display.println(digitalRead(KEYB));
-
-  display.drawFastHLine(x, y, length, WHITE);  // (x, y, length, color)
-  buttonA = digitalRead(KEYA);
-  buttonB = digitalRead(KEYB);
-
-  if (buttonA != 1 && x > 0) {
-    x = x - 1;
-  } else if (buttonB != 1 && x < 63 - length) {
-    x = x + 1;
+  if(!digitalRead(KEYA)){
+    resetGame();
   }
 
-
-  inBounds = (centerX > leftBound) && (centerX < rightBound) && (centerY > upperBound) && (centerY < (lowerBound - 1));
-  // Serial.println("bounds: " + inBounds);
-  // Serial.println("left: " + (centerX > leftBound));
-  // Serial.println("right: " + (centerX < rightBound));
-  // Serial.println("up: " + (centerY > upperBound));
-  // Serial.println("low: " + (centerY > (lowerBound - 1)));
-
-  if (inBounds) {
-    centerX = centerX + 1;
-    centerY = centerY + 1;
-  }
-
-  display.drawCircle(centerX, centerY, radius, WHITE);  // (Xcenter, Ycenter, radius)
-  display.fillCircle(centerX, centerY, radius, WHITE);
-
-
-
-
-
-  if (hitRight() || hitLeft()) {
-    velocityX = velocityX * -1;
-  }
-
-  else if (hitTop() || hitLower()) {
-    velocityY = velocityY * -1;
-  }
-
-  // centerX update
-  // centerY update
-
-  centerX = centerX + velocityX;
-  centerY = centerY + velocityY;
-
-
-
-  display.display();  // required to refresh the screen contents
-  delay(50);
+  delay(100);
 }
 
 bool hitRight() {
-  return centerX == maxPixelX - radius;
+  return ballCenterX == maxPixelX - ballRadius;
 }
 
 bool hitLeft() {
-  return centerX == radius;
+  return ballCenterX == ballRadius;
 }
 
 bool hitTop() {
-  return centerY == radius;
+  return ballCenterY == ballRadius;
 }
 
-// should distinguish between paddle and lower
-bool hitLower() {
-  return centerY == maxPixelY - radius;
+bool hitPaddle() {
+  return (ballCenterY == paddleY -1 - ballRadius)
+      && (ballCenterX >= paddleX) && (ballCenterX <= paddleX + paddleLength);
+}
+
+bool hitPaddleLeftSide(){
+  return ballCenterX <= paddleX + paddleLength / 2;
+}
+
+bool hitBottom(){
+  return ballCenterY == maxPixelY;
+}
+
+void resetGame(){
+  gameOver = false;
+  score = 0;
+  setRandomBallCoordinates();
+  paddleInMiddle();
+}
+
+void setRandomBallCoordinates(){
+  // I found this formula for rand() to generate a number within the required range.
+  // In line 169 the random range is [ballRadius+1 ; maxPixelX - 1 - ballRadius]
+  ballCenterX = ballRadius + 1 + (rand() % maxPixelX - 1 - ballRadius);
+  ballCenterY = ballRadius + 1 + (rand() % maxPixelY / 2);
+  ballVelocityY = 1;
+}
+
+void paddleInMiddle(){
+  paddleX = 23;
 }
