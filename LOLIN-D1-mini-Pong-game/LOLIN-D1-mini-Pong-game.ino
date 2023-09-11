@@ -111,7 +111,6 @@ void loop() {
     ballCenterY = ballCenterY + ballVelocityY;
 
     display.display();  // required to refresh the screen contents
-    delay(10);
   }
 
   display.clearDisplay();
@@ -164,10 +163,9 @@ void resetGame(){
 }
 
 void setRandomBallCoordinates(){
-  // I found this formula for rand() to generate a number within the required range.
-  // In line 169 the random range is [ballRadius+1 ; maxPixelX - 1 - ballRadius]
-  ballCenterX = ballRadius + 1 + (rand() % maxPixelX - 1 - ballRadius);
-  ballCenterY = ballRadius + 1 + (rand() % maxPixelY / 2);
+  // In line ballCenterX the random range is [ballRadius+1 ; maxPixelX - 4]
+  ballCenterX = ballRadius + 1 + (rand() % (maxPixelX - 4 - ballRadius));
+  ballCenterY = ballRadius + 5 + (rand() % maxPixelY / 2);
   ballVelocityY = 1;
 }
 
