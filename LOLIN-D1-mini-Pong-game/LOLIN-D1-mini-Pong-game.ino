@@ -83,12 +83,16 @@ void loop() {
     // // the logic of moving the paddle
     // if (buttonA != 1 && paddleX > 0) {
     //   paddleX = paddleX - 1;
-    //   lastPressedButton = "A";
     // } else if (buttonB != 1 && paddleX < 63 - paddleLength) {
     //   paddleX = paddleX + 1;
-    //   lastPressedButton = "B";
     // }
     
+  if (buttonA != 1) {
+      lastPressedButton = 1;
+    } else if (buttonB != 1 ) {
+      lastPressedButton = 2;
+    }
+
 // the logic of moving the paddle
     if (lastPressedButton == 1 && paddleX > 0) {
       paddleX = paddleX - 1;
