@@ -18,13 +18,11 @@ The libraries can be added via the library manager: make sure you have verion:
 #define GES_ENTRY_TIME			800				// When you want to recognize the Forward/Backward gestures, your gestures' reaction time must less than GES_ENTRY_TIME(0.8s). 
 #define GES_QUIT_TIME			1000
 
-
 Adafruit_SSD1306 display(OLED_RESET);
 
 // Screen border values
 int maxPixelX = 63;
 int maxPixelY = 47;
-
 
 // Line (paddle) properties
 int paddleX = 23;
@@ -53,14 +51,11 @@ bool gameOver = false;
 int score = 0;
 
 int lastPressedButton = 0;
-
+int counter = 0;
 
 
 void setup() {
-  Serial.begin(115200);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C address
-  delay(1000);
-
+  // Setting up Paj7620 motion detector
   uint8_t error = 0;
   error = paj7620Init();  // initialize Paj7620 registers
 
@@ -70,21 +65,20 @@ void setup() {
   } else {
     Serial.println("INIT OK");
   }
+
+  // Setting up everything else
   pinMode(KEYA, INPUT);
   pinMode(KEYB, INPUT);
+
+  Serial.begin(115200);
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C address
+  delay(1000);
 
   setRandomBallCoordinates();
 }
 
 
-
 void loop() {
-
-
-
-
-
-
 
   while (!gameOver) {
     display.clearDisplay();
@@ -104,6 +98,13 @@ void loop() {
     buttonA = digitalRead(KEYA);
     buttonB = digitalRead(KEYB);
 
+    //if(counter % 5 == 0){
+    movePaddle();
+    //counter = 0;
+    //}
+
+    //counter++;
+
     // // checking for last pressed key
     // if (buttonA != 1) {
     //   lastPressedButton = 1;
@@ -111,16 +112,14 @@ void loop() {
     //   lastPressedButton = 2;
     // }
 
-    // // the logic of moving the paddle
-    // if (lastPressedButton == 1 && paddleX > 0) {
-    //   paddleX = paddleX - 1;
-    //   lastPressedButton = 1;
-    // } else if (lastPressedButton == 2 && paddleX < 63 - paddleLength) {
-    //   paddleX = paddleX + 1;
-    //   lastPressedButton = 2;
-    // }
-
-    movePaddle();
+    // the logic of moving the paddle
+    if (lastPressedButton == 1 && paddleX > 0) {
+      paddleX = paddleX - 1;
+      lastPressedButton = 1;
+    } else if (lastPressedButton == 2 && paddleX < 63 - paddleLength) {
+      paddleX = paddleX + 1;
+      lastPressedButton = 2;
+    }
 
     if (hitRight() || hitLeft()) {
       ballVelocityX = ballVelocityX * -1;
@@ -165,46 +164,43 @@ void loop() {
     resetGame();
   }
 
-  delay(100);
+  //delay(100);
 }
 
 
 void movePaddle() {
-  if (GES_LEFT_FLAG != 1) {
-    lastPressedButton = 1;
-  } else if (GES_RIGHT_FLAG != 1) {
-    lastPressedButton = 2;
-  }
   uint8_t data = 0, data1 = 0, error;
 
+  // if (data == GES_LEFT_FLAG) {
+  //   lastPressedButton = 1;
+  // } else if (data == GES_RIGHT_FLAG) {
+  //   lastPressedButton = 2;
+  // }
   error = paj7620ReadReg(0x43, 1, &data);  // Read Bank_0_Reg_0x43/0x44 for gesture result.
   if (!error) {
     switch (data)  // When different gestures be detected, the variable 'data' will be set to different values by paj7620ReadReg(0x43, 1, &data).
     {
       case GES_RIGHT_FLAG:
-        delay(GES_ENTRY_TIME);
-        paj7620ReadReg(0x43, 1, &data);
+        //delay(GES_ENTRY_TIME);
+        //paj7620ReadReg(0x43, 1, &data);
         // move paddle to the right
-        paddleX = paddleX + 1;
+        //paddleX = paddleX + 1;
         lastPressedButton = 2;
 
         break;
       case GES_LEFT_FLAG:
-        delay(GES_ENTRY_TIME);
-        paj7620ReadReg(0x43, 1, &data);
+        //delay(GES_ENTRY_TIME);
+        //paj7620ReadReg(0x43, 1, &data);
         // move paddle to the left
-        paddleX = paddleX - 1;
+        //paddleX = paddleX - 1;
         lastPressedButton = 1;
         break;
       default:
-        paj7620ReadReg(0x44, 1, &data1);
-
-        Serial.println("do nothing");
-
+        //paj7620ReadReg(0x44, 1, &data1);
         break;
     }
   }
-  delay(100);
+  //delay(500);
 }
 
 
