@@ -18,13 +18,13 @@ int maxPixelX = 63;
 int maxPixelY = 47;
 
 
-// Line (paddle) properties 
+// Line (paddle) properties
 int paddleX = 23;
 int paddleY = 47;
 int paddleLength = 16;
 
-int buttonA;// = 0;
-int buttonB;// = 0;
+int buttonA;  // = 0;
+int buttonB;  // = 0;
 
 // Ball properties
 int ballCenterX;
@@ -51,6 +51,14 @@ void setup() {
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C address
   delay(1000);
 
+  error = paj7620Init();  // initialize Paj7620 registers
+
+  if (error) {
+    Serial.print("INIT ERROR,CODE:");
+    Serial.println(error);
+  } else {
+    Serial.println("INIT OK");
+  }
   pinMode(KEYA, INPUT);
   pinMode(KEYB, INPUT);
 
@@ -60,7 +68,14 @@ void setup() {
 
 
 void loop() {
-  while(!gameOver){
+
+
+
+
+
+
+
+  while (!gameOver) {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
@@ -68,7 +83,7 @@ void loop() {
     display.print(score);
 
     // drawing a paddle
-    display.drawFastHLine(paddleX, paddleY, paddleLength, WHITE); 
+    display.drawFastHLine(paddleX, paddleY, paddleLength, WHITE);
 
     // drawing a circle
     display.drawCircle(ballCenterX, ballCenterY, ballRadius, WHITE);
@@ -78,30 +93,23 @@ void loop() {
     buttonA = digitalRead(KEYA);
     buttonB = digitalRead(KEYB);
 
-    // last pressed button
+    // // checking for last pressed key
+    // if (buttonA != 1) {
+    //   lastPressedButton = 1;
+    // } else if (buttonB != 1) {
+    //   lastPressedButton = 2;
+    // }
 
     // // the logic of moving the paddle
-    // if (buttonA != 1 && paddleX > 0) {
+    // if (lastPressedButton == 1 && paddleX > 0) {
     //   paddleX = paddleX - 1;
-    // } else if (buttonB != 1 && paddleX < 63 - paddleLength) {
+    //   lastPressedButton = 1;
+    // } else if (lastPressedButton == 2 && paddleX < 63 - paddleLength) {
     //   paddleX = paddleX + 1;
+    //   lastPressedButton = 2;
     // }
-    
-  if (buttonA != 1) {
-      lastPressedButton = 1;
-    } else if (buttonB != 1 ) {
-      lastPressedButton = 2;
-    }
 
-// the logic of moving the paddle
-    if (lastPressedButton == 1 && paddleX > 0) {
-      paddleX = paddleX - 1;
-      lastPressedButton = 1;
-    } else if (lastPressedButton = 2 && paddleX < 63 - paddleLength) {
-      paddleX = paddleX + 1;
-      lastPressedButton = 2;
-    }
-    
+    movePaddle();
 
     if (hitRight() || hitLeft()) {
       ballVelocityX = ballVelocityX * -1;
@@ -111,18 +119,18 @@ void loop() {
       ballVelocityY = ballVelocityY * -1;
     }
 
-    if(hitPaddle()){
+    if (hitPaddle()) {
       score++;
       ballVelocityY = ballVelocityY * -1;
 
-      if(hitPaddleLeftSide()){
+      if (hitPaddleLeftSide()) {
         ballVelocityX = abs(ballVelocityX) * (-1);
       } else {
         ballVelocityX = abs(ballVelocityX);
       }
     }
 
-    if (hitBottom()){
+    if (hitBottom()) {
       gameOver = true;
     }
 
@@ -142,12 +150,55 @@ void loop() {
   display.println("Press A to play");
   display.display();
 
-  if(!digitalRead(KEYA)){
+  if (!digitalRead(KEYA)) {
     resetGame();
   }
 
   delay(100);
 }
+
+
+void movePaddle() {
+
+
+  if (GES_LEFT_FLAG != 1) {
+    lastPressedButton = 1;
+  } else if (GES_RIGHT_FLAG != 1) {
+    lastPressedButton = 2;
+  }
+  uint8_t data = 0, data1 = 0, error;
+
+  error = paj7620ReadReg(0x43, 1, &data);  // Read Bank_0_Reg_0x43/0x44 for gesture result.
+  if (!error) {
+    switch (data)  // When different gestures be detected, the variable 'data' will be set to different values by paj7620ReadReg(0x43, 1, &data).
+    {
+      case GES_RIGHT_FLAG:
+        delay(GES_ENTRY_TIME);
+        paj7620ReadReg(0x43, 1, &data);
+
+        // move paddle to the right
+        paddleX = paddleX + 1;
+        lastPressedButton = 2;
+
+        break;
+      case GES_LEFT_FLAG:
+        delay(GES_ENTRY_TIME);
+        paj7620ReadReg(0x43, 1, &data);
+        // move paddle to the left
+        paddleX = paddleX - 1;
+        lastPressedButton = 1;
+        break;
+      default:
+        paj7620ReadReg(0x44, 1, &data1);
+
+        Serial.println("do nothing");
+
+        break;
+    }
+  }
+  delay(100);
+}
+
 
 bool hitRight() {
   return ballCenterX == maxPixelX - ballRadius;
@@ -162,32 +213,32 @@ bool hitTop() {
 }
 
 bool hitPaddle() {
-  return (ballCenterY == paddleY -1 - ballRadius)
-      && (ballCenterX >= paddleX) && (ballCenterX <= paddleX + paddleLength);
+  return (ballCenterY == paddleY - 1 - ballRadius)
+         && (ballCenterX >= paddleX) && (ballCenterX <= paddleX + paddleLength);
 }
 
-bool hitPaddleLeftSide(){
+bool hitPaddleLeftSide() {
   return ballCenterX <= paddleX + paddleLength / 2;
 }
 
-bool hitBottom(){
+bool hitBottom() {
   return ballCenterY == maxPixelY;
 }
 
-void resetGame(){
+void resetGame() {
   gameOver = false;
   score = 0;
   setRandomBallCoordinates();
   paddleInMiddle();
 }
 
-void setRandomBallCoordinates(){
+void setRandomBallCoordinates() {
   // In line ballCenterX the random range is [ballRadius+1 ; maxPixelX - 4]
   ballCenterX = ballRadius + 1 + (rand() % (maxPixelX - 4 - ballRadius));
   ballCenterY = ballRadius + 5 + (rand() % maxPixelY / 2);
   ballVelocityY = 1;
 }
 
-void paddleInMiddle(){
+void paddleInMiddle() {
   paddleX = 23;
 }
