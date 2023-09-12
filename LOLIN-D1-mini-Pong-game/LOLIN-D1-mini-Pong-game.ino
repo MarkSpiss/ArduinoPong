@@ -4,19 +4,14 @@ The libraries can be added via the library manager: make sure you have verion:
 "Adafruit SSD1306 Wemos Mini OLED" by "Adafruit + mcauser", see below
 */
 
+// adding libraries
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Wire.h>
 #include "paj7620.h"
 
-#define KEYA D3
-#define KEYB D4
 #define OLED_RESET -1  // GPIO1
 
-// Motion sensor
-#define GES_REACTION_TIME		500				// You can adjust the reaction time according to the actual circumstance.
-#define GES_ENTRY_TIME			800				// When you want to recognize the Forward/Backward gestures, your gestures' reaction time must less than GES_ENTRY_TIME(0.8s). 
-#define GES_QUIT_TIME			1000
 
 Adafruit_SSD1306 display(OLED_RESET);
 
@@ -28,9 +23,6 @@ int maxPixelY = 47;
 int paddleX = 23;
 int paddleY = 47;
 int paddleLength = 16;
-
-int buttonA;  // = 0;
-int buttonB;  // = 0;
 
 // Ball properties
 int ballCenterX;
@@ -50,8 +42,9 @@ bool inBounds = (ballCenterX > leftBound) && (ballCenterX < rightBound) && (ball
 bool gameOver = false;
 int score = 0;
 
+// representation of the last chosen direction to move in
 int lastPressedButton = 0;
-int counter = 0;
+
 
 
 void setup() {
@@ -66,14 +59,12 @@ void setup() {
     Serial.println("INIT OK");
   }
 
-  // Setting up everything else
-  pinMode(KEYA, INPUT);
-  pinMode(KEYB, INPUT);
 
   Serial.begin(115200);
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C address
   delay(1000);
 
+// spawn ball at a random position on the screen
   setRandomBallCoordinates();
 }
 
@@ -81,36 +72,20 @@ void setup() {
 void loop() {
 
   while (!gameOver) {
+    // initialising LED screen
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
     display.setTextSize(1);
     display.print(score);
 
-    // drawing a paddle
+    // drawing the paddle
     display.drawFastHLine(paddleX, paddleY, paddleLength, WHITE);
 
-    // drawing a circle
-    display.drawCircle(ballCenterX, ballCenterY, ballRadius, WHITE);
+    // drawing the bal (circle)
     display.fillCircle(ballCenterX, ballCenterY, ballRadius, WHITE);
 
-    // reading input from buttons
-    buttonA = digitalRead(KEYA);
-    buttonB = digitalRead(KEYB);
-
-    //if(counter % 5 == 0){
     movePaddle();
-    //counter = 0;
-    //}
-
-    //counter++;
-
-    // // checking for last pressed key
-    // if (buttonA != 1) {
-    //   lastPressedButton = 1;
-    // } else if (buttonB != 1) {
-    //   lastPressedButton = 2;
-    // }
 
     // the logic of moving the paddle
     if (lastPressedButton == 1 && paddleX > 0) {
@@ -121,6 +96,7 @@ void loop() {
       lastPressedButton = 2;
     }
 
+// The logic of bouncing the ball of the borders
     if (hitRight() || hitLeft()) {
       ballVelocityX = ballVelocityX * -1;
     }
@@ -144,6 +120,7 @@ void loop() {
       gameOver = true;
     }
 
+    // changing the velocity/direction of the ball
     ballCenterX = ballCenterX + ballVelocityX;
     ballCenterY = ballCenterY + ballVelocityY;
 
@@ -164,72 +141,62 @@ void loop() {
     resetGame();
   }
 
-  //delay(100);
 }
 
 
 void movePaddle() {
   uint8_t data = 0, data1 = 0, error;
 
-  if (data == GES_LEFT_FLAG) {
-    lastPressedButton = 1;
-  } else if (data == GES_RIGHT_FLAG) {
-    lastPressedButton = 2;
-  }
-
   error = paj7620ReadReg(0x43, 1, &data);  // Read Bank_0_Reg_0x43/0x44 for gesture result.
   if (!error) {
     switch (data)  // When different gestures be detected, the variable 'data' will be set to different values by paj7620ReadReg(0x43, 1, &data).
     {
       case GES_RIGHT_FLAG:
-        //delay(GES_ENTRY_TIME);
-        //paj7620ReadReg(0x43, 1, &data);
-        // move paddle to the right
-        //paddleX = paddleX + 1;
         lastPressedButton = 2;
-
         break;
       case GES_LEFT_FLAG:
-        //delay(GES_ENTRY_TIME);
-        //paj7620ReadReg(0x43, 1, &data);
-        // move paddle to the left
-        //paddleX = paddleX - 1;
         lastPressedButton = 1;
         break;
       default:
-        //paj7620ReadReg(0x44, 1, &data1);
         break;
     }
   }
-  //delay(500);
 }
 
 
+// hitting the right border
 bool hitRight() {
   return ballCenterX == maxPixelX - ballRadius;
 }
 
+// hitting the left border
 bool hitLeft() {
   return ballCenterX == ballRadius;
 }
 
+// hitting the top border
 bool hitTop() {
   return ballCenterY == ballRadius;
 }
 
+// hitting the paddle
 bool hitPaddle() {
   return (ballCenterY == paddleY - 1 - ballRadius)
          && (ballCenterX >= paddleX) && (ballCenterX <= paddleX + paddleLength);
 }
 
+// hitting the left side of the paddle 
+// to change direction appropriately
 bool hitPaddleLeftSide() {
   return ballCenterX <= paddleX + paddleLength / 2;
 }
 
+// hitting the bottom of the screen, aka game over
 bool hitBottom() {
   return ballCenterY == maxPixelY;
 }
 
+// resetting the game
 void resetGame() {
   gameOver = false;
   score = 0;
@@ -237,6 +204,7 @@ void resetGame() {
   paddleInMiddle();
 }
 
+// spwaning the ball at random coordinates.
 void setRandomBallCoordinates() {
   // In line ballCenterX the random range is [ballRadius+1 ; maxPixelX - 4]
   ballCenterX = ballRadius + 1 + (rand() % (maxPixelX - 4 - ballRadius));
@@ -244,6 +212,7 @@ void setRandomBallCoordinates() {
   ballVelocityY = 1;
 }
 
+// puts the paddle in the middle of the screen
 void paddleInMiddle() {
   paddleX = 23;
 }
