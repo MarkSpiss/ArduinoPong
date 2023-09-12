@@ -11,9 +11,12 @@ The libraries can be added via the library manager: make sure you have verion:
 #include "paj7620.h"
 
 #define OLED_RESET -1  // GPIO1
+#define KEYA D3
 
 
 Adafruit_SSD1306 display(OLED_RESET);
+
+int buttonA;
 
 // Screen border values
 int maxPixelX = 63;
@@ -59,6 +62,7 @@ void setup() {
     Serial.println("INIT OK");
   }
 
+  pinMode(KEYA, INPUT);
 
   Serial.begin(115200);
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C address
@@ -90,10 +94,8 @@ void loop() {
     // the logic of moving the paddle
     if (lastPressedButton == 1 && paddleX > 0) {
       paddleX = paddleX - 1;
-      lastPressedButton = 1;
     } else if (lastPressedButton == 2 && paddleX < 63 - paddleLength) {
       paddleX = paddleX + 1;
-      lastPressedButton = 2;
     }
 
 // The logic of bouncing the ball of the borders
@@ -140,12 +142,11 @@ void loop() {
   if (!digitalRead(KEYA)) {
     resetGame();
   }
-
 }
 
 
 void movePaddle() {
-  uint8_t data = 0, data1 = 0, error;
+  uint8_t data = 0, error;
 
   error = paj7620ReadReg(0x43, 1, &data);  // Read Bank_0_Reg_0x43/0x44 for gesture result.
   if (!error) {
@@ -216,3 +217,30 @@ void setRandomBallCoordinates() {
 void paddleInMiddle() {
   paddleX = 23;
 }
+
+/* MOTOR CODE
+#include <Wire.h>
+#include <LOLIN_I2C_MOTOR.h>
+#define PWM_FREQUENCY 1000
+
+LOLIN_I2C_MOTOR motor(DEFAULT_I2C_MOTOR_ADDRESS);
+//I2C address 0x30 SEE NOTE BELOW
+
+void setup() {
+  //wait until motor shield ready.
+  while (motor.PRODUCT_ID != PRODUCT_ID_I2C_MOTOR) {
+    motor.getInfo();
+  }
+}
+
+void loop() {
+  motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
+  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
+  for (int duty = 40; duty <= 100; duty += 1) {
+    motor.changeDuty(MOTOR_CH_A, duty);
+    delay(200);
+  }
+  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_STANDBY);
+  delay(500);
+}
+*/
