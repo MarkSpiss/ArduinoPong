@@ -184,7 +184,6 @@ void movePaddle() {
       case GES_RIGHT_FLAG:
         delay(GES_ENTRY_TIME);
         paj7620ReadReg(0x43, 1, &data);
-        Se
         // move paddle to the right
         paddleX = paddleX + 1;
         lastPressedButton = 2;
