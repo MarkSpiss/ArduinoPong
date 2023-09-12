@@ -171,11 +171,12 @@ void loop() {
 void movePaddle() {
   uint8_t data = 0, data1 = 0, error;
 
-  // if (data == GES_LEFT_FLAG) {
-  //   lastPressedButton = 1;
-  // } else if (data == GES_RIGHT_FLAG) {
-  //   lastPressedButton = 2;
-  // }
+  if (data == GES_LEFT_FLAG) {
+    lastPressedButton = 1;
+  } else if (data == GES_RIGHT_FLAG) {
+    lastPressedButton = 2;
+  }
+
   error = paj7620ReadReg(0x43, 1, &data);  // Read Bank_0_Reg_0x43/0x44 for gesture result.
   if (!error) {
     switch (data)  // When different gestures be detected, the variable 'data' will be set to different values by paj7620ReadReg(0x43, 1, &data).
@@ -239,7 +240,7 @@ void resetGame() {
 void setRandomBallCoordinates() {
   // In line ballCenterX the random range is [ballRadius+1 ; maxPixelX - 4]
   ballCenterX = ballRadius + 1 + (rand() % (maxPixelX - 4 - ballRadius));
-  ballCenterY = ballRadius + 5 + (rand() % maxPixelY / 2);
+  ballCenterY = ballRadius + 1 + (rand() % 2);
   ballVelocityY = 1;
 }
 
