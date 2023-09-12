@@ -97,7 +97,7 @@ void loop() {
     if (lastPressedButton == 1 && paddleX > 0) {
       paddleX = paddleX - 1;
       lastPressedButton = 1;
-    } else if (lastPressedButton = 2 && paddleX < 63 - paddleLength) {
+    } else if (lastPressedButton == 2 && paddleX < 63 - paddleLength) {
       paddleX = paddleX + 1;
       lastPressedButton = 2;
     }
