@@ -44,6 +44,7 @@ bool inBounds = (ballCenterX > leftBound) && (ballCenterX < rightBound) && (ball
 bool gameOver = false;
 int score = 0;
 
+int lastPressedButton = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -77,12 +78,26 @@ void loop() {
     buttonA = digitalRead(KEYA);
     buttonB = digitalRead(KEYB);
 
-    // the logic of moving the paddle
-    if (buttonA != 1 && paddleX > 0) {
+    // last pressed button
+
+    // // the logic of moving the paddle
+    // if (buttonA != 1 && paddleX > 0) {
+    //   paddleX = paddleX - 1;
+    //   lastPressedButton = "A";
+    // } else if (buttonB != 1 && paddleX < 63 - paddleLength) {
+    //   paddleX = paddleX + 1;
+    //   lastPressedButton = "B";
+    // }
+    
+// the logic of moving the paddle
+    if (lastPressedButton == 1 && paddleX > 0) {
       paddleX = paddleX - 1;
-    } else if (buttonB != 1 && paddleX < 63 - paddleLength) {
+      lastPressedButton = 1;
+    } else if (lastPressedButton = 2 && paddleX < 63 - paddleLength) {
       paddleX = paddleX + 1;
+      lastPressedButton = 2;
     }
+    
 
     if (hitRight() || hitLeft()) {
       ballVelocityX = ballVelocityX * -1;
