@@ -6,10 +6,18 @@ The libraries can be added via the library manager: make sure you have verion:
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Wire.h>
+#include "paj7620.h"
 
 #define KEYA D3
 #define KEYB D4
 #define OLED_RESET -1  // GPIO1
+
+// Motion sensor
+#define GES_REACTION_TIME		500				// You can adjust the reaction time according to the actual circumstance.
+#define GES_ENTRY_TIME			800				// When you want to recognize the Forward/Backward gestures, your gestures' reaction time must less than GES_ENTRY_TIME(0.8s). 
+#define GES_QUIT_TIME			1000
+
 
 Adafruit_SSD1306 display(OLED_RESET);
 
@@ -46,11 +54,14 @@ int score = 0;
 
 int lastPressedButton = 0;
 
+
+
 void setup() {
   Serial.begin(115200);
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C address
   delay(1000);
 
+  uint8_t error = 0;
   error = paj7620Init();  // initialize Paj7620 registers
 
   if (error) {
@@ -159,8 +170,6 @@ void loop() {
 
 
 void movePaddle() {
-
-
   if (GES_LEFT_FLAG != 1) {
     lastPressedButton = 1;
   } else if (GES_RIGHT_FLAG != 1) {
@@ -175,7 +184,7 @@ void movePaddle() {
       case GES_RIGHT_FLAG:
         delay(GES_ENTRY_TIME);
         paj7620ReadReg(0x43, 1, &data);
-
+        Se
         // move paddle to the right
         paddleX = paddleX + 1;
         lastPressedButton = 2;
