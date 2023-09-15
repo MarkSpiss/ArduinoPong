@@ -10,9 +10,28 @@ The libraries can be added via the library manager: make sure you have verion:
 #include <Wire.h>
 #include "paj7620.h"
 
-#include <Wire.h>
+// libraries and constants for the motor
 #include <LOLIN_I2C_MOTOR.h>
 #define PWM_FREQUENCY 1000
+
+// for the wifi connection
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#define LISTEN_PORT 80
+
+const char* ssid = "NDL_24G";       // name of local WiFi network in the NDL
+const char* password = "RT-AC66U";  // the password of the WiFi network
+
+MDNSResponder mdns;
+ESP8266WebServer server(LISTEN_PORT);
+String webPage = "<h1>Pong game :) </h1>";
+
+bool ledOn = false;
+bool resetOn = false;
+
+bool leftOn = false;
+bool rightOn = false;
 
 
 #define OLED_RESET -1  // GPIO1
@@ -23,6 +42,9 @@ LOLIN_I2C_MOTOR motor(DEFAULT_I2C_MOTOR_ADDRESS);
 
 Adafruit_SSD1306 display(OLED_RESET);
 
+
+
+// input from the button
 int buttonA;
 
 // Screen border values
@@ -56,6 +78,8 @@ int score = 0;
 int lastPressedButton = 0;
 
 void setup() {
+
+  Serial.begin(115200);
   // Setting up Paj7620 motion detector
   uint8_t error = 0;
   error = paj7620Init();  // initialize Paj7620 registers
@@ -67,16 +91,77 @@ void setup() {
     Serial.println("INIT OK");
   }
 
-  // wait till motor is ready
+  // setting up motor
   while (motor.PRODUCT_ID != PRODUCT_ID_I2C_MOTOR) {
     motor.getInfo();
   }
 
+  // setting up buttons
   pinMode(KEYA, INPUT);
 
-  Serial.begin(115200);
+
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C address
   delay(1000);
+
+
+  // setting up wifi connection
+
+  pinMode(LED_BUILTIN, OUTPUT);  // the LED
+  pinMode(LED_BUILTIN, OUTPUT);  // the Button
+
+  digitalWrite(LED_BUILTIN, ledOn);  // the actual status is inverted
+  digitalWrite(LED_BUILTIN, resetOn);  // the actual status is inverted
+
+  printWebPage();
+
+
+  WiFi.begin(ssid, password);  // make the WiFi connection
+  Serial.println("Start connecting.");
+  while (WiFi.status() != WL_CONNECTED) {
+    // delay(500);
+    Serial.print(".");
+  }
+  Serial.print("Connected to ");
+  Serial.print(ssid);
+  Serial.print(". IP address: ");
+  Serial.println(WiFi.localIP());
+
+  if (mdns.begin("esp8266", WiFi.localIP())) {
+    Serial.println("MDNS responder started");
+  }
+
+  // make handlers for input from WiFi connection
+  server.on("/", []() {
+    server.send(200, "text/html", webPage);
+  });
+
+
+// this part reads info from the button 'press me' into the ide
+  server.on("/button", []() {
+    server.send(200, "text/html", webPage);
+    ledOn = !ledOn;
+    Serial.print("led ");
+    Serial.println(ledOn);
+    digitalWrite(LED_BUILTIN, !ledOn);
+    delay(1000);
+  });
+
+  // this part reads info from the button 'reset' 
+  server.on("/button", []() {
+    server.send(200, "text/html", webPage);
+    resetOn = !resetOn;
+    Serial.print("reset ");
+    Serial.println(resetOn);
+    digitalWrite(LED_BUILTIN, !resetOn);
+    delay(1000);
+  });
+
+
+  
+
+  server.begin();  // start the server for WiFi input
+  Serial.println("HTTP server started");
+
 
   // spawn ball at a random position on the screen
   setRandomBallCoordinates();
@@ -84,6 +169,21 @@ void setup() {
 
 
 void loop() {
+  // wifi connection
+  server.handleClient();
+  mdns.update();
+
+
+  printWebPage();
+
+  // HERE WE NEED TO REFRESH THE PAGE
+
+  /*
+    To refresh the web page we need to include java script to access our website and push new information to the site. 
+    This is something we'll probably need to use for our actual project, so it would be nice if could make an attempt with this project. 
+    It is optional for this project as it's not clearly mentioned in the reader/guide. We'll need to use AJAX/javscript for this.
+  */
+
 
   while (!gameOver) {
     // initialising LED screen
@@ -158,6 +258,26 @@ void loop() {
   }
 }
 
+void printWebPage() {
+  webPage = "<h1>Pong game :) </h1>";
+  webPage += "<p>Press me <a href=\"button\">";
+  webPage += "<button style=\"background-color:blue;color:white;\">";
+  webPage += "LED</button></a></p>";
+
+  webPage += "<p>Reset game <a href=\"button\">";
+  webPage += "<button style=\"background-color:black;color:white;\">";
+  webPage += "RESET</button></a></p>";
+
+  webPage += "<p>Move <a href=\"button\">";
+  webPage += "<button style=\"background-color:green;color:white;\">";
+  webPage += "LEFT</button></a>";
+
+  webPage += "<button style=\"background-color:green;color:white;\">";
+  webPage += "         RIGHT</button></a></p>";
+
+  webPage += "<p>Your  score is: " + String(score) + "</p>";
+}
+
 void releaseCandy() {
   motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
   motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
@@ -229,6 +349,7 @@ void resetGame() {
   score = 0;
   setRandomBallCoordinates();
   paddleInMiddle();
+  lastPressedButton = 0;
 }
 
 // spwaning the ball at random coordinates.
@@ -243,30 +364,3 @@ void setRandomBallCoordinates() {
 void paddleInMiddle() {
   paddleX = 23;
 }
-
-/* MOTOR CODE
-#include <Wire.h>
-#include <LOLIN_I2C_MOTOR.h>
-#define PWM_FREQUENCY 1000
-
-LOLIN_I2C_MOTOR motor(DEFAULT_I2C_MOTOR_ADDRESS);
-//I2C address 0x30 SEE NOTE BELOW
-
-void setup() {
-  //wait until motor shield ready.
-  while (motor.PRODUCT_ID != PRODUCT_ID_I2C_MOTOR) {
-    motor.getInfo();
-  }
-}
-
-void loop() {
-  motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
-  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
-  for (int duty = 40; duty <= 100; duty += 1) {
-    motor.changeDuty(MOTOR_CH_A, duty);
-    delay(200);
-  }
-  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_STANDBY);
-  delay(500);
-}
-*/
