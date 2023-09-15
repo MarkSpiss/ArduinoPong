@@ -10,9 +10,16 @@ The libraries can be added via the library manager: make sure you have verion:
 #include <Wire.h>
 #include "paj7620.h"
 
+#include <Wire.h>
+#include <LOLIN_I2C_MOTOR.h>
+#define PWM_FREQUENCY 1000
+
+
 #define OLED_RESET -1  // GPIO1
 #define KEYA D3
 
+
+LOLIN_I2C_MOTOR motor(DEFAULT_I2C_MOTOR_ADDRESS);
 
 Adafruit_SSD1306 display(OLED_RESET);
 
@@ -48,8 +55,6 @@ int score = 0;
 // representation of the last chosen direction to move in
 int lastPressedButton = 0;
 
-
-
 void setup() {
   // Setting up Paj7620 motion detector
   uint8_t error = 0;
@@ -62,13 +67,18 @@ void setup() {
     Serial.println("INIT OK");
   }
 
+  // wait till motor is ready
+  while (motor.PRODUCT_ID != PRODUCT_ID_I2C_MOTOR) {
+    motor.getInfo();
+  }
+
   pinMode(KEYA, INPUT);
 
   Serial.begin(115200);
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C address
   delay(1000);
 
-// spawn ball at a random position on the screen
+  // spawn ball at a random position on the screen
   setRandomBallCoordinates();
 }
 
@@ -89,7 +99,8 @@ void loop() {
     // drawing the bal (circle)
     display.fillCircle(ballCenterX, ballCenterY, ballRadius, WHITE);
 
-    movePaddle();
+    // choose paddle direction
+    paddleDirection();
 
     // the logic of moving the paddle
     if (lastPressedButton == 1 && paddleX > 0) {
@@ -98,7 +109,7 @@ void loop() {
       paddleX = paddleX + 1;
     }
 
-// The logic of bouncing the ball of the borders
+    // The logic of bouncing the ball of the borders
     if (hitRight() || hitLeft()) {
       ballVelocityX = ballVelocityX * -1;
     }
@@ -108,7 +119,10 @@ void loop() {
     }
 
     if (hitPaddle()) {
+
       score++;
+      releaseCandy();
+
       ballVelocityY = ballVelocityY * -1;
 
       if (hitPaddleLeftSide()) {
@@ -144,8 +158,18 @@ void loop() {
   }
 }
 
+void releaseCandy() {
+  motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
+  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
+  for (int duty = 40; duty <= 45; duty += 1) {
+    motor.changeDuty(MOTOR_CH_A, duty);
+    // delay(200);
+  }
+  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_STANDBY);
+  // delay(500);
+}
 
-void movePaddle() {
+void paddleDirection() {
   uint8_t data = 0, error;
 
   error = paj7620ReadReg(0x43, 1, &data);  // Read Bank_0_Reg_0x43/0x44 for gesture result.
@@ -153,9 +177,11 @@ void movePaddle() {
     switch (data)  // When different gestures be detected, the variable 'data' will be set to different values by paj7620ReadReg(0x43, 1, &data).
     {
       case GES_RIGHT_FLAG:
+        // paddleX = paddleX + 1;
         lastPressedButton = 2;
         break;
       case GES_LEFT_FLAG:
+        // paddleX = paddleX - 1;
         lastPressedButton = 1;
         break;
       default:
@@ -186,7 +212,7 @@ bool hitPaddle() {
          && (ballCenterX >= paddleX) && (ballCenterX <= paddleX + paddleLength);
 }
 
-// hitting the left side of the paddle 
+// hitting the left side of the paddle
 // to change direction appropriately
 bool hitPaddleLeftSide() {
   return ballCenterX <= paddleX + paddleLength / 2;
