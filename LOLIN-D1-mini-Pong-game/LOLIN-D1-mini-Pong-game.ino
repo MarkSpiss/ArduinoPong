@@ -75,7 +75,7 @@ bool gameOver = false;
 int score = 0;
 
 // representation of the last chosen direction to move in
-int lastPressedButton = 0;
+int paddleDirection = 0; //1 is left, 2 is right
 
 void setup() {
 
@@ -143,20 +143,37 @@ void setup() {
     Serial.print("led ");
     Serial.println(ledOn);
     digitalWrite(LED_BUILTIN, !ledOn);
-    delay(1000);
+    delay(100);
   });
 
   // this part reads info from the button 'reset' 
+  // TODO FIX IT
   server.on("/button2", []() {
     server.send(200, "text/html", webPage);
-    resetOn = !resetOn;
+    resetGame();
     Serial.print("reset ");
     Serial.println(resetOn);
     digitalWrite(LED_BUILTIN, !resetOn);
-    delay(1000);
+    delay(100);
   });
 
+  // Handling the "LEFT" button
+  server.on("/button3", []() {
+    server.send(200, "text/html", webPage);
+    paddleDirection = 1;
+    Serial.print("left ");
+    Serial.println(paddleDirection);
+    delay(100);
+  });
 
+  // Handling the "RIGHT" button
+    server.on("/button4", []() {
+    server.send(200, "text/html", webPage);
+    paddleDirection = 2;
+    Serial.print("right ");
+    Serial.println(paddleDirection);
+    delay(100);
+  });
 
   server.begin();  // start the server for WiFi input
   Serial.println("HTTP server started");
@@ -199,12 +216,12 @@ void loop() {
     display.fillCircle(ballCenterX, ballCenterY, ballRadius, WHITE);
 
     // choose paddle direction
-    paddleDirection();
+    pickPaddleDirection();
 
     // the logic of moving the paddle
-    if (lastPressedButton == 1 && paddleX > 0) {
+    if (paddleDirection == 1 && paddleX > 0) {
       paddleX = paddleX - 1;
-    } else if (lastPressedButton == 2 && paddleX < 63 - paddleLength) {
+    } else if (paddleDirection == 2 && paddleX < 63 - paddleLength) {
       paddleX = paddleX + 1;
     }
 
@@ -289,7 +306,7 @@ void releaseCandy() {
   // delay(500);
 }
 
-void paddleDirection() {
+void pickPaddleDirection() {
   uint8_t data = 0, error;
 
   error = paj7620ReadReg(0x43, 1, &data);  // Read Bank_0_Reg_0x43/0x44 for gesture result.
@@ -298,11 +315,11 @@ void paddleDirection() {
     {
       case GES_RIGHT_FLAG:
         // paddleX = paddleX + 1;
-        lastPressedButton = 2;
+        paddleDirection = 2;
         break;
       case GES_LEFT_FLAG:
         // paddleX = paddleX - 1;
-        lastPressedButton = 1;
+        paddleDirection = 1;
         break;
       default:
         break;
@@ -349,7 +366,7 @@ void resetGame() {
   score = 0;
   setRandomBallCoordinates();
   paddleInMiddle();
-  lastPressedButton = 0;
+  paddleDirection = 0;
 }
 
 // spwaning the ball at random coordinates.
