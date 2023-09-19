@@ -73,9 +73,12 @@ bool inBounds = (ballCenterX > leftBound) && (ballCenterX < rightBound) && (ball
 // game properties
 bool gameOver = false;
 int score = 0;
+int iteration = 1;
 
 // representation of the last chosen direction to move in
 int paddleDirection = 0; //1 is left, 2 is right
+
+bool motorRunning = false;
 
 void setup() {
 
@@ -94,6 +97,8 @@ void setup() {
   // setting up motor
   while (motor.PRODUCT_ID != PRODUCT_ID_I2C_MOTOR) {
     motor.getInfo();
+    motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
+    motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
   }
 
   // setting up buttons
@@ -143,7 +148,7 @@ void setup() {
     Serial.print("led ");
     Serial.println(ledOn);
     digitalWrite(LED_BUILTIN, !ledOn);
-    delay(100);
+    //delay(100);
   });
 
   // this part reads info from the button 'reset' 
@@ -154,7 +159,7 @@ void setup() {
     Serial.print("reset ");
     Serial.println(resetOn);
     digitalWrite(LED_BUILTIN, !resetOn);
-    delay(100);
+   // delay(100);
   });
 
   // Handling the "LEFT" button
@@ -163,7 +168,7 @@ void setup() {
     paddleDirection = 1;
     Serial.print("left ");
     Serial.println(paddleDirection);
-    delay(100);
+    //delay(200);
   });
 
   // Handling the "RIGHT" button
@@ -172,7 +177,7 @@ void setup() {
     paddleDirection = 2;
     Serial.print("right ");
     Serial.println(paddleDirection);
-    delay(100);
+    //delay(200);
   });
 
   server.begin();  // start the server for WiFi input
@@ -185,6 +190,7 @@ void setup() {
 
 
 void loop() {
+
   // wifi connection
   server.handleClient();
   mdns.update();
@@ -200,8 +206,8 @@ void loop() {
     It is optional for this project as it's not clearly mentioned in the reader/guide. We'll need to use AJAX/javscript for this.
   */
 
-
   while (!gameOver) {
+    server.handleClient();
     // initialising LED screen
     display.clearDisplay();
     display.setCursor(0, 0);
@@ -239,6 +245,7 @@ void loop() {
       score++;
       releaseCandy();
 
+
       ballVelocityY = ballVelocityY * -1;
 
       if (hitPaddleLeftSide()) {
@@ -256,7 +263,18 @@ void loop() {
     ballCenterX = ballCenterX + ballVelocityX;
     ballCenterY = ballCenterY + ballVelocityY;
 
+    if(motorRunning == true && iteration % 6 == 0){
+        motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_STANDBY);
+        motorRunning = false;
+        Serial.println("stop motor");
+    }
+
+    Serial.print("Iteration number ");
+    Serial.println(iteration);
     display.display();  // required to refresh the screen contents
+    if(iteration < 7){
+      iteration++;
+    }
   }
 
   display.clearDisplay();
@@ -296,13 +314,19 @@ void printWebPage() {
 }
 
 void releaseCandy() {
-  motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
-  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
-  for (int duty = 40; duty <= 45; duty += 1) {
-    motor.changeDuty(MOTOR_CH_A, duty);
+  //motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
+  //motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
+  //for (int duty = 40; duty <= 45; duty += 1) {
+  int duty = 42;
+  motor.changeDuty(MOTOR_CH_A, duty);
+  motorRunning = true;
+  iteration = 1;
+  Serial.print("releaseCandy runs ");
+  Serial.println(iteration);
+  duty++;
     // delay(200);
-  }
-  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_STANDBY);
+  //}
+  //motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_STANDBY);
   // delay(500);
 }
 
