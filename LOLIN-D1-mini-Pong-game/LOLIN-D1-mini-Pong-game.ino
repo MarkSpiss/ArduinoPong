@@ -118,7 +118,7 @@ void setup() {
   WiFi.begin(ssid, password);  // make the WiFi connection
   Serial.println("Start connecting.");
   while (WiFi.status() != WL_CONNECTED) {
-    // delay(500);
+    delay(500); // for some reason without this delay nothing worked for me
     Serial.print(".");
   }
   Serial.print("Connected to ");
@@ -137,7 +137,7 @@ void setup() {
 
 
 // this part reads info from the button 'press me' into the ide
-  server.on("/button", []() {
+  server.on("/button1", []() {
     server.send(200, "text/html", webPage);
     ledOn = !ledOn;
     Serial.print("led ");
@@ -147,7 +147,7 @@ void setup() {
   });
 
   // this part reads info from the button 'reset' 
-  server.on("/button", []() {
+  server.on("/button2", []() {
     server.send(200, "text/html", webPage);
     resetOn = !resetOn;
     Serial.print("reset ");
@@ -157,7 +157,6 @@ void setup() {
   });
 
 
-  
 
   server.begin();  // start the server for WiFi input
   Serial.println("HTTP server started");
@@ -260,18 +259,19 @@ void loop() {
 
 void printWebPage() {
   webPage = "<h1>Pong game :) </h1>";
-  webPage += "<p>Press me <a href=\"button\">";
+  webPage += "<p>Press me <a href=\"button1\">";
   webPage += "<button style=\"background-color:blue;color:white;\">";
   webPage += "LED</button></a></p>";
 
-  webPage += "<p>Reset game <a href=\"button\">";
+  webPage += "<p>Reset game <a href=\"button2\">";
   webPage += "<button style=\"background-color:black;color:white;\">";
   webPage += "RESET</button></a></p>";
 
-  webPage += "<p>Move <a href=\"button\">";
+  webPage += "<p>Move <a href=\"button3\">";
   webPage += "<button style=\"background-color:green;color:white;\">";
   webPage += "LEFT</button></a>";
 
+  webPage += "<a href=\"button4\">";
   webPage += "<button style=\"background-color:green;color:white;\">";
   webPage += "         RIGHT</button></a></p>";
 
