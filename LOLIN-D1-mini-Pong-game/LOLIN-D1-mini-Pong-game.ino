@@ -43,7 +43,6 @@ LOLIN_I2C_MOTOR motor(DEFAULT_I2C_MOTOR_ADDRESS);
 Adafruit_SSD1306 display(OLED_RESET);
 
 
-
 // input from the button
 int buttonA;
 
@@ -83,6 +82,23 @@ bool motorRunning = false;
 void setup() {
 
   Serial.begin(115200);
+
+  // set up wifi connection
+  WiFi.begin(ssid, password);  // make the WiFi connection
+  Serial.println("Start connecting.");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500); // for some reason without this delay nothing worked for me
+    Serial.print(".");
+  }
+  Serial.print("Connected to ");
+  Serial.print(ssid);
+  Serial.print(". IP address: ");
+  Serial.println(WiFi.localIP());
+
+  if (mdns.begin("esp8266", WiFi.localIP())) {
+    Serial.println("MDNS responder started");
+  }
+
   // Setting up Paj7620 motion detector
   uint8_t error = 0;
   error = paj7620Init();  // initialize Paj7620 registers
@@ -119,27 +135,10 @@ void setup() {
 
   printWebPage();
 
-
-  WiFi.begin(ssid, password);  // make the WiFi connection
-  Serial.println("Start connecting.");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500); // for some reason without this delay nothing worked for me
-    Serial.print(".");
-  }
-  Serial.print("Connected to ");
-  Serial.print(ssid);
-  Serial.print(". IP address: ");
-  Serial.println(WiFi.localIP());
-
-  if (mdns.begin("esp8266", WiFi.localIP())) {
-    Serial.println("MDNS responder started");
-  }
-
   // make handlers for input from WiFi connection
   server.on("/", []() {
     server.send(200, "text/html", webPage);
   });
-
 
 // this part reads info from the button 'press me' into the ide
   server.on("/button1", []() {
@@ -152,14 +151,12 @@ void setup() {
   });
 
   // this part reads info from the button 'reset' 
-  // TODO FIX IT
   server.on("/button2", []() {
     server.send(200, "text/html", webPage);
     resetGame();
     Serial.print("reset ");
     Serial.println(resetOn);
     digitalWrite(LED_BUILTIN, !resetOn);
-   // delay(100);
   });
 
   // Handling the "LEFT" button
@@ -168,7 +165,6 @@ void setup() {
     paddleDirection = 1;
     Serial.print("left ");
     Serial.println(paddleDirection);
-    //delay(200);
   });
 
   // Handling the "RIGHT" button
@@ -177,7 +173,6 @@ void setup() {
     paddleDirection = 2;
     Serial.print("right ");
     Serial.println(paddleDirection);
-    //delay(200);
   });
 
   server.begin();  // start the server for WiFi input
@@ -269,8 +264,6 @@ void loop() {
         Serial.println("stop motor");
     }
 
-    Serial.print("Iteration number ");
-    Serial.println(iteration);
     display.display();  // required to refresh the screen contents
     if(iteration < 7){
       iteration++;
@@ -314,20 +307,15 @@ void printWebPage() {
 }
 
 void releaseCandy() {
-  //motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
-  //motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
-  //for (int duty = 40; duty <= 45; duty += 1) {
-  int duty = 42;
-  motor.changeDuty(MOTOR_CH_A, duty);
+  motor.changeFreq(MOTOR_CH_BOTH, PWM_FREQUENCY);
+  motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_CCW);
+
+  motor.changeDuty(MOTOR_CH_A, 42);
   motorRunning = true;
   iteration = 1;
   Serial.print("releaseCandy runs ");
   Serial.println(iteration);
-  duty++;
-    // delay(200);
-  //}
-  //motor.changeStatus(MOTOR_CH_A, MOTOR_STATUS_STANDBY);
-  // delay(500);
+
 }
 
 void pickPaddleDirection() {
